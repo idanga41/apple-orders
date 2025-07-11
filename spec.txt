@@ -1,0 +1,36 @@
+📝 Project Specification: Apple Orders Flask App
+
+🎯 Purpose:
+A Flask-based web API for viewing Apple products, placing orders, and managing stock in real time via simple HTTP requests.
+
+📌 Core Functionality:
+
+1. Home Page (GET /)
+- Returns a welcome message: "Welcome to Apple Orders API"
+
+2. Product List (GET /products)
+- Returns a list of available Apple products in JSON format.
+- Each product includes:
+  - id: unique identifier
+  - name: product name
+  - stock: available quantity
+
+3. Place an Order (POST /order)
+- Accepts a JSON payload with:
+  - product_id: the ID of the product to order
+  - customer_name: name of the customer placing the order
+
+- Logic:
+  - If the product exists and stock > 0:
+    → Returns a success message and decreases stock by 1
+  - If the product does not exist:
+    → Returns error: "Product not found"
+  - If stock is 0:
+    → Returns error: "Product is out of stock"
+
+(Optional) 4. View Orders (GET /orders)
+- Returns a list of all orders that have been placed (if implemented)
+
+🛠️ Data Handling:
+- Product list and stock are stored in memory (no database).
+- Orders are also stored in memory (if implemented).
