@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apple-orders-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: apple-orders
+  template:
+    metadata:
+      labels:
+        app: apple-orders
+    spec:
+      containers:
+        - name: apple-orders-container
+          image: idanga41/apple-orders-app:v1
+          ports:
+            - containerPort: 5000
