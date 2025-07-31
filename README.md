@@ -1,63 +1,69 @@
 # Apple Orders API
 
-A simple Flask REST API that simulates an ordering system for Apple products.  
-This project is part of the final assignment for the DevOps course.
+This is a simple Flask-based REST API for managing Apple product orders. It allows viewing available Apple products and placing orders while updating stock levels.
 
-## Features
+## How to Run the Project After Cloning
 
-- GET /products – Returns a list of available products
-- POST /order – Allows placing an order and updates product stock
-- Products include: SKU, name, storage, connectivity, colour, and stock
+1. Clone the repository:
 
-## Requirements
+```bash
+git clone https://github.com/idanga41/apple-orders.git
+cd apple-orders
+```
 
-- Docker installed
-- Git installed
+2. Build the Docker image:
 
-## How to Run the Application
+```bash
+docker build -t apple-orders-app .
+```
 
-1. Clone the repository:  
-   git clone https://github.com/idanga41/apple-orders.git  
-   cd apple-orders
+3. Run the Docker container and expose port 5000:
 
-2. Run the app using the Docker image from Docker Hub:  
-   docker run -p 5000:5000 idanga41/apple-orders-app:v1
+```bash
+docker run -p 5000:5000 apple-orders-app
+```
 
-3. Test the API:
+4. Access the API using this URL:
 
-   Home route:  
-   curl http://localhost:5000/
+```
+http://localhost:5000
+```
 
-   Get product list:  
-   curl http://localhost:5000/products
+## API Endpoints
 
-   Place an order:  
-   curl -X POST http://localhost:5000/order \
-     -H "Content-Type: application/json" \
-     -d '{"sku": "APL-IPH15-256-BLK", "customer_name": "Tester"}'
+### GET /products
 
-## Project Files
+Returns a list of all available Apple products.
 
-- app.py – Flask application code
-- requirements.txt – Python dependencies
-- Dockerfile – Docker image definition
-- spec.txt – Project specification
-- apple-deployment.yaml – Kubernetes Deployment file (bonus)
-- apple-service.yaml – Kubernetes LoadBalancer Service (bonus)
+Example:
+```bash
+curl http://localhost:5000/products
+```
 
-## Kubernetes (Bonus - Optional)
+### POST /order
 
-1. Start Minikube cluster with 3 nodes:  
-   minikube start -p apple-orders-cluster --nodes 3
+Places an order and decreases stock by 1 if the product is available.
 
-2. Install CA certificates on all nodes (if required):  
-   ~/k8s/2-pod-and-containers/1-basic-pod-and-deployment-demo/single-pod/install-ca-on-nodes.sh apple-orders-cluster
+Example:
+```bash
+curl -X POST http://localhost:5000/order \
+  -H "Content-Type: application/json" \
+  -d '{"sku": "APL-IPH15-256-BLK", "customer_name": "Alice"}'
+```
 
-3. Deploy the application:  
-   kubectl apply -f apple-deployment.yaml
+## Docker Notes
 
-4. Expose with LoadBalancer:  
-   kubectl apply -f apple-service.yaml
+- The image exposes port 5000 inside the container.
+- Flask app is configured to run on `host="0.0.0.0"` so it can be accessed externally via `localhost:5000`.
 
-5. Access the service:  
-   minikube service apple-orders-service -p apple-orders-cluster
+## Kubernetes (Bonus)
+
+If running with Kubernetes (e.g., Minikube), make sure:
+
+- The image `idanga41/apple-orders-app:v4` is used in the deployment YAML
+- You run a LoadBalancer service (`apple-service.yaml`)
+- You access the service using the URL provided by:
+
+```bash
+minikube service apple-orders-service --url
+```
