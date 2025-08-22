@@ -1,0 +1,50 @@
+name: App Deploy (Helm → EKS)
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ROLE_TO_ASSUME: arn:aws:iam::123456789012:role/github-oidc-deploy   # ← עדכן ל-ARN שלך
+  EKS_CLUSTER_NAME: apple-orders-eks
+  HELM_CHART_DIR: deploy/helm/apple-orders
+  NAMESPACE: apple-orders
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install kubectl & helm
+        run: |
+          sudo curl -L https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl -o /usr/local/bin/kubectl
+          sudo chmod +x /usr/local/bin/kubectl
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      - name: Configure kubeconfig for EKS
+        run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_REGION
+
+      - name: Create namespace (idempotent)
+        run: kubectl get ns $NAMESPACE || kubectl create ns $NAMESPACE
+
+      - name: Helm upgrade/install
+        run: |
+          helm upgrade --install apple-orders $HELM_CHART_DIR \
+            --namespace $NAMESPACE \
+            --set image.repository=YOUR_DOCKER_IMAGE_REPO \ 
+            --set image.tag=${{ github.sha }} \
+            --wait --timeout 5m
