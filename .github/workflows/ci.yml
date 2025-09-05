@@ -1,5 +1,10 @@
 name: CI & Deploy
 
+name: App Deploy (manual only for now)
+
+on:
+  workflow_dispatch: {}
+
 on:
   push:
     branches:
