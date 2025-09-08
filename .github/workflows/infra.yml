@@ -1,11 +1,8 @@
-name: Infra (Terraform → EKS)
-
+# .github/workflows/infra.yml
 on:
   push:
-    branches: ["main"]
-    paths:
-      - 'infra/**'
+    branches: ['main']
+    paths: ['infra/**', '.github/workflows/infra.yml']
   pull_request:
-    branches: ["main"]
-    paths:
-      - 'infra/**'
+    branches: ['main']
+    paths: ['infra/**', '.github/workflows/infra.yml']
