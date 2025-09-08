@@ -3,56 +3,9 @@ name: Infra (Terraform → EKS)
 on:
   push:
     branches: ["main"]
+    paths:
+      - 'infra/**'
   pull_request:
     branches: ["main"]
-
-permissions:
-  id-token: write
-  contents: read
-
-env:
-  AWS_REGION: us-east-1
-  TF_WORKING_DIR: infra/terraform
-  TF_BACKEND_BUCKET: tf-state-apple-orders       # שנה לשם ה-Bucket שלך
-  TF_BACKEND_KEY: eks/terraform.tfstate
-  TF_DDB_TABLE: tf-state-lock                    # אם יצרת טבלת DynamoDB
-  AWS_ROLE_TO_ASSUME: arn:aws:iam::123456789012:role/github-oidc-terraform  # עדכן ל-ARN האמיתי
-  EKS_CLUSTER_NAME: apple-orders-eks
-
-jobs:
-  terraform:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - uses: hashicorp/setup-terraform@v3
-
-      - name: Terraform Init
-        working-directory: ${{ env.TF_WORKING_DIR }}
-        run: |
-          terraform init \
-            -backend-config="bucket=${TF_BACKEND_BUCKET}" \
-            -backend-config="key=${TF_BACKEND_KEY}" \
-            -backend-config="region=${AWS_REGION}" \
-            -backend-config="dynamodb_table=${TF_DDB_TABLE}"
-
-      - name: Terraform Validate
-        working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform validate
-
-      - name: Terraform Plan (PR)
-        if: github.event_name == 'pull_request'
-        working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform plan -var="region=${AWS_REGION}" -var="cluster_name=${EKS_CLUSTER_NAME}"
-
-      - name: Terraform Apply (push to main)
-        if: github.event_name == 'push'
-        working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform apply -auto-approve -var="region=${AWS_REGION}" -var="cluster_name=${EKS_CLUSTER_NAME}"
+    paths:
+      - 'infra/**'
