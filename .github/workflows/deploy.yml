@@ -1,4 +1,4 @@
-name: App Deploy (Helm → EKS)
+name: App Deploy (Build → ECR → Helm to EKS)
 
 on:
   push:
@@ -12,10 +12,11 @@ permissions:
 
 env:
   AWS_REGION: us-east-1
-  AWS_ROLE_TO_ASSUME: arn:aws:iam::123456789012:role/github-oidc-deploy   # ← עדכן ל-ARN שלך
-  EKS_CLUSTER_NAME: apple-orders-eks
+  AWS_ROLE_TO_ASSUME: arn:aws:iam::123456789012:role/github-oidc-deploy   # ← עדכן
+  EKS_CLUSTER_NAME: apple-orders-eks                                      # ← עדכן לשם בפועל
   HELM_CHART_DIR: deploy/helm/apple-orders
   NAMESPACE: apple-orders
+  ECR_URI: 123456789012.dkr.ecr.us-east-1.amazonaws.com/apple-orders      # ← עדכן ל-URI שלך
 
 jobs:
   deploy:
@@ -29,11 +30,24 @@ jobs:
           role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Login to ECR
+        run: |
+          aws ecr get-login-password --region $AWS_REGION \
+            | docker login --username AWS --password-stdin ${ECR_URI%%/*}
+
+      - name: Build & push image (main + short SHA)
+        run: |
+          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+          docker build -t $ECR_URI:main -t $ECR_URI:${SHORT_SHA} .
+          docker push $ECR_URI:main
+          docker push $ECR_URI:${SHORT_SHA}
+          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
+
       - name: Install kubectl & helm
         run: |
           sudo curl -L https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl -o /usr/local/bin/kubectl
           sudo chmod +x /usr/local/bin/kubectl
-          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+          curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
       - name: Configure kubeconfig for EKS
         run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_REGION
@@ -41,10 +55,13 @@ jobs:
       - name: Create namespace (idempotent)
         run: kubectl get ns $NAMESPACE || kubectl create ns $NAMESPACE
 
-      - name: Helm upgrade/install
+      - name: Helm upgrade/install (set image repo+tag)
         run: |
           helm upgrade --install apple-orders $HELM_CHART_DIR \
             --namespace $NAMESPACE \
-            --set image.repository=YOUR_DOCKER_IMAGE_REPO \
-            --set image.tag=${{ github.sha }} \
+            --set image.repository=$ECR_URI \
+            --set image.tag=${{ env.SHORT_SHA }} \
             --wait --timeout 5m
+
+      - name: Check rollout
+        run: kubectl -n $NAMESPACE rollout status deploy/apple-orders --timeout=180s
