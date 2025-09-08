@@ -1,8 +1,5 @@
-# .github/workflows/infra.yml
+# .github/workflows/deploy.yml
+name: App Deploy (Build → ECR → Helm to EKS)
 on:
-  push:
-    branches: ['main']
-    paths: ['infra/**', '.github/workflows/infra.yml']
-  pull_request:
-    branches: ['main']
-    paths: ['infra/**', '.github/workflows/infra.yml']
+  workflow_dispatch: {}
+# (מוחקים כרגע את ה-push/pull_request כדי שלא ירוץ אוטומטית)
