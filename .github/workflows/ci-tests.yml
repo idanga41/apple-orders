@@ -1,40 +1,22 @@
+# .github/workflows/ci-tests.yml
 name: CI - Unit Tests
-
 on:
   push:
-    branches:
-      - 'feature/**'
-      - main
+    branches: ['feature/**','main']
   pull_request:
-    branches:
-      - main
+    branches: ['main']
 
 jobs:
   tests:
-    name: Run unit tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
-      # אופציונלי: קאש לצמצום זמן התקנה
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
       - name: Install deps
         run: |
-          python -m pip install --upgrade pip
+          python -m pip install -U pip
           python -m pip install -r requirements.txt
-          # אם יש לך requirements-test.txt הוסף כאן:
-          # python -m pip install -r requirements-test.txt
-
-      - name: Run tests (pytest also finds unittest)
+      - name: Run tests
         run: python -m pytest -q
