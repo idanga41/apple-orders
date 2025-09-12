@@ -1,9 +1,7 @@
-name: App Deploy (Build → ECR → Helm to EKS)
+name: App Deploy (Helm to EKS with Docker Hub)
 
 on:
   push:
-    branches: ["main"]
-  pull_request:
     branches: ["main"]
 
 permissions:
@@ -11,12 +9,12 @@ permissions:
   contents: read
 
 env:
-  AWS_REGION: us-east-1
-  AWS_ROLE_TO_ASSUME: arn:aws:iam::123456789012:role/github-oidc-deploy   # ← עדכן
-  EKS_CLUSTER_NAME: apple-orders-eks                                      # ← עדכן לשם בפועל
-  HELM_CHART_DIR: deploy/helm/apple-orders
+  AWS_REGION: us-east-1                   # האזור שבחרת ל-EKS
+  EKS_CLUSTER_NAME: apple-orders-eks      # שם הקלאסטר
   NAMESPACE: apple-orders
-  ECR_URI: 123456789012.dkr.ecr.us-east-1.amazonaws.com/apple-orders      # ← עדכן ל-URI שלך
+  HELM_CHART_DIR: deploy/helm/apple-orders
+  IMAGE_REPO: idanga41/apple-orders-app   # השם שלך ב-Docker Hub
+  IMAGE_TAG: v4                           # תגית האימג' (tag)
 
 jobs:
   deploy:
@@ -24,44 +22,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Configure AWS credentials (OIDC)
+      - name: Configure AWS (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to ECR
-        run: |
-          aws ecr get-login-password --region $AWS_REGION \
-            | docker login --username AWS --password-stdin ${ECR_URI%%/*}
-
-      - name: Build & push image (main + short SHA)
-        run: |
-          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
-          docker build -t $ECR_URI:main -t $ECR_URI:${SHORT_SHA} .
-          docker push $ECR_URI:main
-          docker push $ECR_URI:${SHORT_SHA}
-          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
+          # role-to-assume: arn:aws:iam::<ACCOUNT_ID>:role/<YourOidcRole>
 
       - name: Install kubectl & helm
         run: |
-          sudo curl -L https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl -o /usr/local/bin/kubectl
+          curl -sSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+          sudo curl -L "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl
           sudo chmod +x /usr/local/bin/kubectl
-          curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
-      - name: Configure kubeconfig for EKS
+      - name: Update kubeconfig
         run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_REGION
 
       - name: Create namespace (idempotent)
         run: kubectl get ns $NAMESPACE || kubectl create ns $NAMESPACE
 
-      - name: Helm upgrade/install (set image repo+tag)
+      - name: Helm upgrade/install
         run: |
           helm upgrade --install apple-orders $HELM_CHART_DIR \
             --namespace $NAMESPACE \
-            --set image.repository=$ECR_URI \
-            --set image.tag=${{ env.SHORT_SHA }} \
+            --set image.repository=$IMAGE_REPO \
+            --set image.tag=$IMAGE_TAG \
             --wait --timeout 5m
 
-      - name: Check rollout
+      - name: Rollout status
         run: kubectl -n $NAMESPACE rollout status deploy/apple-orders --timeout=180s
