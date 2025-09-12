@@ -1,11 +1,7 @@
 image:
-  repository: YOUR_DOCKER_IMAGE_REPO    # ← עדכן לריפו התמונה (Docker Hub/GHCR)
-  tag: "latest"
-  pullPolicy: IfNotPresent
-
-replicaCount: 1
-
+  repository: idanga41/apple-orders-app
+  tag: v4
+replicaCount: 2
 service:
-  type: ClusterIP
-  port: 80
-  targetPort: 5000   # אם האפליקציה מאזינה על 5000
+  port: 5000
+resources: {}
