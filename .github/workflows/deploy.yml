@@ -14,7 +14,7 @@ env:
   NAMESPACE: apple-orders
   HELM_CHART_DIR: deploy/helm/apple-orders
   IMAGE_REPO: idanga41/apple-orders-app   # השם שלך ב-Docker Hub
-  IMAGE_TAG: v4                           # תגית האימג' (tag)
+  IMAGE_TAG: v5                           # תגית האימג' (tag)
 
 jobs:
   deploy:
